@@ -1,15 +1,12 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding=UTF-8
 
 #################### ALESSANDRO RIDOLFI ########################
-#                        Version 0.5                           #
-#               Bonn, March 2017 - November 2018               #
-################################################################
+
 
 import os, os.path, sys, glob, time
 import numpy as np
 import scipy, scipy.optimize
-import sidereal
 import astropy.time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 import astropy.units as u
@@ -41,19 +38,23 @@ def calculate_altitude_azimuth_and_parang_for_source_at_observatory(datetime_utc
 
         list_obs_latitude_string     = obs_latitude_string.split("_")
         list_obs_longitude_string    = obs_longitude_string.split("_")
-        obs_latitude_deg   = np.float(list_obs_latitude_string[0])     + np.float(list_obs_latitude_string[1])/60.      + np.float(list_obs_latitude_string[2])/3600.
-        obs_longitude_deg  = np.float(list_obs_longitude_string[0])    + np.float(list_obs_longitude_string[1])/60.     + np.float(list_obs_longitude_string[2])/3600.
+        obs_latitude_deg   = np.float64(list_obs_latitude_string[0])     + np.float64(list_obs_latitude_string[1])/60.      + np.float64(list_obs_latitude_string[2])/3600.
+        obs_longitude_deg  = np.float64(list_obs_longitude_string[0])    + np.float64(list_obs_longitude_string[1])/60.     + np.float64(list_obs_longitude_string[2])/3600.
 
         observatory_location = EarthLocation(lat = obs_latitude_deg *u.deg, lon= obs_longitude_deg *u.deg, height=0*u.m)
 
         t_utc                     = astropy.time.Time(datetime_utc_string,  format='iso', scale='utc')
-        t_greenwich_sidereal      = sidereal.SiderealTime.fromDatetime(t_utc.datetime)
-        t_observatory_sidereal    = t_greenwich_sidereal.lst( obs_longitude_deg * np.pi/180.  )
+        
+
+        #t_greenwich_sidereal      = sidereal.SiderealTime.fromDatetime(t_utc.datetime)
+
+        t_greenwich_sidereal      = t_utc.sidereal_time('apparent', 'greenwich')
+        t_observatory_sidereal    = t_utc.sidereal_time('apparent', observatory_location)
 
         source_coords_radec = SkyCoord(source_radec_string, unit=(u.hourangle, u.deg), obstime="J2000.0")
         source_coords_altaz = source_coords_radec.transform_to(AltAz(obstime=t_utc, location=observatory_location))
 
-        hour_angle_h = t_observatory_sidereal.hours - source_coords_radec.ra.hour
+        hour_angle_h = t_observatory_sidereal.hour - source_coords_radec.ra.hour
         if hour_angle_h > +12.00:  hour_angle_h = hour_angle_h - 24.00
         if hour_angle_h < -12.00:  hour_angle_h = hour_angle_h + 24.00
 
@@ -106,7 +107,7 @@ def find_index_of_nearest_value(array,value):
 
 def lst_float_from_string(string_lst):
         hh, mm, ss = string_lst.split(":")
-        lst_float = np.float(hh) + np.float(mm)/60. + np.float(ss)/(60*60)
+        lst_float = np.float64(hh) + np.float64(mm)/60. + np.float64(ss)/(60*60)
         return lst_float
         
 def print_hours_in_hhmmss(hours):
@@ -172,14 +173,14 @@ elev_min_deg = 0
 
 omega_dot = -1
 Pb_dot = -1
-string_version = "0.6 (11Apr2019)"
+string_version = "1.0-beta (15Nov2023)"
 
 if (len(sys.argv) == 1 or ("-h" in sys.argv) or ("-help" in sys.argv) or ("--help" in sys.argv)):
-        print "USAGE: %s -par \"<parfile1>,<parfile2>\" -mjd_range \"MJD_start,MJD_end\" -site \"GMRT\" -HA_window 1.0 [-dont_check_visibility] -TH_range \"0.20,0.30\" [-elev_min deg] [-D]" % (os.path.basename(sys.argv[0]))
-        print
+        print("USAGE: %s -par \"<parfile1>,<parfile2>\" -mjd_range \"MJD_start,MJD_end\" -site \"GMRT\" -HA_window 1.0 [-dont_check_visibility] -TH_range \"0.20,0.30\" [-elev_min deg] [-D]" % (os.path.basename(sys.argv[0])))
+        print("")
         exit()
 elif (("-version" in sys.argv) or ("--version" in sys.argv)):
-        print "Version: %s" % (string_version)
+        print("Version: %s" % (string_version))
         exit()
 else:
         for j in range( 1, len(sys.argv)):
@@ -191,7 +192,7 @@ else:
                                 list_parfiles = [ os.path.abspath(os.path.expanduser(x)) for x in string_files.replace(" ", "").split(",")]
 
                 elif (sys.argv[j] == "-HA_window"):
-                        HA_window = np.float(sys.argv[j+1])
+                        HA_window = np.float64(sys.argv[j+1])
                         
 
                 elif (sys.argv[j] == "-mode"):
@@ -203,40 +204,40 @@ else:
                 
                 
                 elif (sys.argv[j] == "-TH_range"):
-                        list_TH_frac_range = [np.float(x)%1 for x in sys.argv[j+1].split(",")]
+                        list_TH_frac_range = [np.float64(x)%1 for x in sys.argv[j+1].split(",")]
                         target_angle = "TH"
                 elif (sys.argv[j] == "-T_range"):
-                        list_T_frac_range = [np.float(x)%1 for x in sys.argv[j+1].split(",")]
+                        list_T_frac_range = [np.float64(x)%1 for x in sys.argv[j+1].split(",")]
                         target_angle = "T"
                 elif (sys.argv[j] == "-E_range"):
-                        list_E_frac_range = [np.float(x)%1 for x in sys.argv[j+1].split(",")]
+                        list_E_frac_range = [np.float64(x)%1 for x in sys.argv[j+1].split(",")]
                         target_angle = "E"
                 elif (sys.argv[j] == "-M_range"):
-                        list_M_frac_range = [np.float(x)%1 for x in sys.argv[j+1].split(",")]
+                        list_M_frac_range = [np.float64(x)%1 for x in sys.argv[j+1].split(",")]
                         target_angle = "M"
 
-                        #obs_length_min = np.float(sys.argv[j+1])
+                        #obs_length_min = np.float64(sys.argv[j+1])
 
                 elif (sys.argv[j] == "-dont_check_visibility"):
                         flag_check_visibility = 0
                 elif (sys.argv[j] == "-elev_min"):
-                        elev_min_deg = np.float(sys.argv[j+1])
+                        elev_min_deg = np.float64(sys.argv[j+1])
                 elif (sys.argv[j] == "-D"):
                         flag_display = 1
 
                 
                 elif (sys.argv[j] == "-mjd_range"):
-                        mjd_range = [np.float(x) for x in sys.argv[j+1].split(",")]
+                        mjd_range = [np.float64(x) for x in sys.argv[j+1].split(",")]
                         if len(mjd_range) == 1:
                                 mjd_range.append(mjd_range[0] + 1.0)
                         MJD_min = mjd_range[0]
                         MJD_max = mjd_range[1]
                         
-print
-print "#"*62
-print "#" + " "*26 + "%-20s" % (os.path.basename(sys.argv[0])) + " "*14 + "#"
-print "#"*62
-print
+print("")
+print("#"*62)
+print("#" + " "*26 + "%-20s" % (os.path.basename(sys.argv[0])) + " "*14 + "#")
+print("#"*62)
+print("")
                         
 
 
@@ -255,11 +256,11 @@ for i in range(n_pulsars):
  
        #Get the information about the binary orbit
         try:
-                Pb_days = np.float(dict_parfile['PB'])
+                Pb_days = np.float64(dict_parfile['PB'])
                 Pb_s = Pb_days*86400.
         except KeyError:
                 string_Fb0 = dict_parfile['FB0']
-                Fb0 = np.float(string_Fb0)
+                Fb0 = np.float64(string_Fb0)
                 Pb_s = (1./Fb0)
                 Pb_days = Pb_s/86400.
            
@@ -273,18 +274,31 @@ for i in range(n_pulsars):
         try:               psrname = dict_parfile['PSRJ']
         except KeyError:   psrname = dict_parfile['PSR']
                 
-        try:              T0 = np.float(dict_parfile['T0'])
-        except KeyError:  T0 = np.float(dict_parfile['TASC'])
+        try:              T0 = np.float64(dict_parfile['T0'])
+        except KeyError:  T0 = np.float64(dict_parfile['TASC'])
 
-        try:              ecc = np.float(dict_parfile['E'])
-        except KeyError:  ecc = np.float(dict_parfile['ECC'])
+        try:
+                ecc = np.float64(dict_parfile['E'])
+        except KeyError:
+                try:
+                        ecc = np.float64(dict_parfile['ECC'])
+                except KeyError:
+                        eps1 = np.float64(dict_parfile['EPS1'])
+                        eps2 = np.float64(dict_parfile['EPS2'])
+                        ecc = np.sqrt( eps1**2 + eps2**2)
 
-        try:              omega_p_deg  = np.float(dict_parfile['OM'])
-        except KeyError:  omega_p_deg = 0; print "WARNING: OM not present, assuming OM=0...\n"
+        try:
+                omega_p_deg = np.float64(dict_parfile['OM'])
+        except KeyError:
+                try:
+                        omega_p_deg = np.arctan2(eps1, eps2) * 180./np.pi
+                except:
+                        omega_p_deg = 0; print("WARNING: OM not present, assuming OM=0...\n")
+
         omega_p_frac = omega_p_deg/360.
         omega_p_rad = omega_p_deg*np.pi/180.
                                                      
-        x_p_lts = np.float(dict_parfile['A1'])
+        x_p_lts = np.float64(dict_parfile['A1'])
                                                      
         source_radec_string = dict_parfile['RAJ']+dict_parfile['DECJ']
 
@@ -294,6 +308,8 @@ for i in range(n_pulsars):
         array_E_frac      = solve_mean_to_eccentric_FRAC_numpy(ecc, array_M_frac)/(2*np.pi)
         array_T_frac      = mean_to_true_anomaly_FRAC(ecc, array_M_frac)
         array_TH_frac     = (array_T_frac + omega_p_frac) % 1.0
+
+
         
         #for j in range(N_points):
                 #print "%5d)  M = %6.4f      E = %6.4f      T = %6.4f      TH = %6.4f" % (j, array_M_frac[j], array_E_frac[j], array_T_frac[j], array_TH_frac[j])
@@ -315,6 +331,7 @@ for i in range(n_pulsars):
                 index_min = find_index_of_nearest_value(array_TH_frac, list_TH_frac_range[0])
                 index_max = find_index_of_nearest_value(array_TH_frac, list_TH_frac_range[1])
 
+                
         if index_min > index_max:
                 array_T_frac_arc = np.append(array_T_frac[index_min:], array_T_frac[:index_max])
         else:
@@ -364,41 +381,41 @@ for i in range(n_pulsars):
 
 
 
-        print "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-        print "     %32s" % ("PULSAR PARAMETERS:")
-        print
-        print "%32s = %20s" % ( "Pulsar name", psrname)
-        print "%32s = %20s" % ( "Right Ascension (RAJ)", RAJ)
-        print "%32s = %20s" % ( "Declination (DECJ)", DECJ)
-        print
-        print "     %32s" % ("BINARY PARAMETERS (Keplerian):")
-        print
-        print "%32s = %10.3f days" % ( "Orbital period (Pb)", Pb_days )
-        print "%32s = %10.3f ls" % ( "Project semi-major axis (A1)", x_p_lts )
-        print "%32s = %10.3f" % ( "Epoch of Periastron (T0)", T0 )
-        print "%32s = %10.3f" % ( "Orbital Eccentricity (ECC)", ecc )
-        print "%32s = %10.3f deg" % ( "Longitude of Periastron (OM)", omega_p_deg )
+        print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+        print("     %32s" % ("PULSAR PARAMETERS:"))
+        print()
+        print("%32s = %20s" % ( "Pulsar name", psrname))
+        print("%32s = %20s" % ( "Right Ascension (RAJ)", RAJ))
+        print("%32s = %20s" % ( "Declination (DECJ)", DECJ))
+        print()
+        print("     %32s" % ("BINARY PARAMETERS (Keplerian):"))
+        print()
+        print("%32s = %10.3f days" % ( "Orbital period (Pb)", Pb_days ))
+        print("%32s = %10.3f ls" % ( "Project semi-major axis (A1)", x_p_lts ))
+        print("%32s = %10.3f" % ( "Epoch of Periastron (T0)", T0 ))
+        print("%32s = %10.3f" % ( "Orbital Eccentricity (ECC)", ecc ))
+        print("%32s = %10.3f deg" % ( "Longitude of Periastron (OM)", omega_p_deg ))
 
         if omega_dot != -1 or Pb_dot != -1:
-                print
-                print "Binary Parameters (Post-Keplerian):"
+                print()
+                print("Binary Parameters (Post-Keplerian):")
                 if omega_dot != -1:
-                        print "%60s  |  %11s = %27.20f   deg/yr" % ( "Rate of advance of periastron", "OMDOT", omega_dot )
+                        print("%60s  |  %11s = %27.20f   deg/yr" % ( "Rate of advance of periastron", "OMDOT", omega_dot ))
                 if Pb_s_dot != -1:
-                        print "%60s  |  %11s = %27.20e   s/s " % ( "Orbital Period Derivative", "PBDOT", Pb_dot )        
-        print "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                        print("%60s  |  %11s = %27.20e   s/s " % ( "Orbital Period Derivative", "PBDOT", Pb_dot ))        
+        print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
 
 
 
-        print "Requested orbital phase range:"
-        print
-        print "%30s : %6.3f - %6.3f      = %6.3f - %6.3f" % ("Mean Anomaly (M)",            list_M_frac_range[0],  list_M_frac_range[1], list_M_frac_range_ascending[0], list_M_frac_range_ascending[1] )
-        print "%30s : %6.3f - %6.3f      = %6.3f - %6.3f" % ("Eccentric Anomaly (E)",       list_E_frac_range[0],  list_E_frac_range[1], list_E_frac_range_ascending[0], list_E_frac_range_ascending[1] )
-        print "%30s : %6.3f - %6.3f      = %6.3f - %6.3f" % ("True Anomaly (T)",            list_T_frac_range[0],  list_T_frac_range[1], list_T_frac_range_ascending[0], list_T_frac_range_ascending[1] )
-        print "%30s : %6.3f - %6.3f      = %6.3f - %6.3f" % ("Theta (TH = T + OM)",         list_TH_frac_range[0], list_TH_frac_range[1], list_TH_frac_range_ascending[0], list_TH_frac_range_ascending[1] )
-        print
-        print  
+        print("Requested orbital phase range:")
+        print()
+        print("%30s : %6.3f - %6.3f      = %6.3f - %6.3f" % ("Mean Anomaly (M)",            list_M_frac_range[0],  list_M_frac_range[1], list_M_frac_range_ascending[0], list_M_frac_range_ascending[1] ))
+        print("%30s : %6.3f - %6.3f      = %6.3f - %6.3f" % ("Eccentric Anomaly (E)",       list_E_frac_range[0],  list_E_frac_range[1], list_E_frac_range_ascending[0], list_E_frac_range_ascending[1] ))
+        print("%30s : %6.3f - %6.3f      = %6.3f - %6.3f" % ("True Anomaly (T)",            list_T_frac_range[0],  list_T_frac_range[1], list_T_frac_range_ascending[0], list_T_frac_range_ascending[1] ))
+        print("%30s : %6.3f - %6.3f      = %6.3f - %6.3f" % ("Theta (TH = T + OM)",         list_TH_frac_range[0], list_TH_frac_range[1], list_TH_frac_range_ascending[0], list_TH_frac_range_ascending[1] ))
+        print()
+        print()  
 
 
 
@@ -413,10 +430,12 @@ for i in range(n_pulsars):
         mean_anomaly_interval_size  = np.fabs(mean_anomaly_frac_max - mean_anomaly_frac_min)
 
 
-        print
+        print()
         orbit_interval_days = mean_anomaly_interval_size * Pb_days
+
+        
         N_orbits_in_MJD_range = int ( (MJD_max - MJD_min) / Pb_days  ) 
-        print "Requested orbit interval to observe: %.3f days = %.3f h (%.2f%% of the orbit)" % (orbit_interval_days, orbit_interval_days*24., 100*orbit_interval_days/Pb_days)
+        print("Requested orbit interval to observe: %.3f days = %.3f h (%.2f%% of the orbit)" % (orbit_interval_days, orbit_interval_days*24., 100*orbit_interval_days/Pb_days))
 
 
         #MJD_mean_anomaly_target   = T0 + mean_anomaly_frac_target*Pb_days
@@ -456,38 +475,50 @@ for i in range(n_pulsars):
         while Epoch_M_upper_max < (MJD_max - Pb_days):
                 Epoch_M_upper_max = MJD_mean_anomaly_max + n*Pb_days
                 n=n+1
-        print
-        print
+        print()
+        print()
         N_orbits_observable = int(((Epoch_M_upper_max - orbit_interval_days) - Epoch_M_lower_min )/Pb_days) + 1
                 
-        list_MJD_mean_anomaly_min = Epoch_M_lower_min + np.arange(0, N_orbits_observable)*Pb_days
+        list_MJD_mean_anomaly_min = Epoch_M_lower_min + np.arange(0, N_orbits_observable+1)*Pb_days
+
+        #SWITCH BETWEEN THESE TWO LINES IF YOU SEE THAT THE INTERVALS ARE NOT CALCULATED PROPERLY
         list_MJD_mean_anomaly_max = Epoch_M_upper_max - np.arange(N_orbits_observable-1, -2, -1)*Pb_days
 
+        if (list_MJD_mean_anomaly_max[0] - list_MJD_mean_anomaly_min[0]) > np.fabs(Pb_days):
+                print("(list_MJD_mean_anomaly_max[0] - list_MJD_mean_anomaly_min[0]) > np.fabs(Pb_days)")
+                list_MJD_mean_anomaly_max = Epoch_M_upper_max - np.arange(N_orbits_observable, -1, -1)*Pb_days
+        elif (list_MJD_mean_anomaly_max[0] - list_MJD_mean_anomaly_min[0]) < 0:
+                print("(list_MJD_mean_anomaly_max[0] - list_MJD_mean_anomaly_min[0]) < 0: --->")
+                N_turns = int(np.fabs(list_MJD_mean_anomaly_max[0] - list_MJD_mean_anomaly_min[0])/Pb_days + 1)
+                print("N_turns = ", N_turns)
+                Epoch_M_upper_max = Epoch_M_upper_max+(N_turns+1)*Pb_days
+                list_MJD_mean_anomaly_max = Epoch_M_upper_max - np.arange(N_orbits_observable, -1, -1)*Pb_days
         
         
 
         
         
-        print
-        print N_orbits_in_MJD_range
-        print list_MJD_mean_anomaly_min
-        print list_MJD_mean_anomaly_max
+        print()
+        print("Number of orbits in MJD range: %d" % (N_orbits_in_MJD_range))
+        print("list_MJD_mean_anomaly_min: ", list_MJD_mean_anomaly_min)
+        print("list_MJD_mean_anomaly_max: ", list_MJD_mean_anomaly_max) 
 
-        print
-        print "Epoch_M_lower_min = ", Epoch_M_lower_min
-        print "Epoch_M_upper_max = ", Epoch_M_upper_max
+        print()
+        print("Epoch_M_lower_min = ", Epoch_M_lower_min)
+        print("Epoch_M_upper_max = ", Epoch_M_upper_max)
         
         
-        print
-        print "%d orbits occurring in the requested MJD interval (%.2f - %.2f):" % (N_orbits_observable, MJD_min, MJD_max)
-        print
+        print()
+        print("%d orbits occurring in the requested MJD interval (%.2f - %.2f):" % (N_orbits_observable, MJD_min, MJD_max))
+        print()
         #for i in range(N_orbits_observable):
         #        print "Orbit #%3d)    %9.3f (M = %.3f)  - %9.3f  (M = %.3f)" % (i+1, list_MJD_mean_anomaly_min[i], (list_MJD_mean_anomaly_min[i]-T0)/Pb_days,  list_MJD_mean_anomaly_max[i], (list_MJD_mean_anomaly_max[i]-T0)/Pb_days)
-                
-        print
-        print "Now I check the visibilities of these epoch ranges and print out only those that keep a positive elevation."
-        print
-        print
+
+        if flag_check_visibility == 1:
+                print()
+                print("Now I check the visibilities of these epoch ranges and print out only those that keep a positive elevation.")
+        print()
+        print()
                 
 
         for i in range(N_orbits_observable):
@@ -497,18 +528,26 @@ for i in range(n_pulsars):
                 trial_MJD_min_astropy = astropy.time.Time(trial_MJD_min, format='mjd', scale='utc')
                 trial_MJD_max_astropy = astropy.time.Time(trial_MJD_max, format='mjd', scale='utc')
                 
-                trial_MJD_min_astropy.format = 'iso'
-                trial_MJD_max_astropy.format = 'iso'
+                trial_MJD_min_astropy.format = 'iso';                trial_MJD_min_astropy.out_subfmt = 'date_hm' 
+                trial_MJD_max_astropy.format = 'iso';                trial_MJD_max_astropy.out_subfmt = 'date_hm'
 
                 string_observatory_coordinates = dict_obs_coords_RADEC[str_site]
                 
                 t_observatory_sidereal_min, hour_angle_h_min, source_azimuth_deg_min, source_elevation_deg_min, source_PA_rad_min = calculate_altitude_azimuth_and_parang_for_source_at_observatory(trial_MJD_min_astropy.iso, string_observatory_coordinates, source_radec_string)
                 t_observatory_sidereal_max, hour_angle_h_max, source_azimuth_deg_max, source_elevation_deg_max, source_PA_rad_max = calculate_altitude_azimuth_and_parang_for_source_at_observatory(trial_MJD_max_astropy.iso, string_observatory_coordinates, source_radec_string)
+                
+
+                str_sidereal_min = "%s" % (t_observatory_sidereal_min)
+                str_sidereal_max = "%s" % (t_observatory_sidereal_max)
+                (LST_h_min, LST_m_min, LST_s_min) =  (int(str_sidereal_min.split("h")[0]), int(str_sidereal_min.split("h")[1].split("m")[0]), np.float64(str_sidereal_min.split("m")[1].split("s")[0]))
+                (LST_h_max, LST_m_max, LST_s_max) =  (int(str_sidereal_max.split("h")[0]), int(str_sidereal_max.split("h")[1].split("m")[0]), np.float64(str_sidereal_max.split("m")[1].split("s")[0]))
 
                 if flag_check_visibility == 0 or (source_elevation_deg_min > elev_min_deg and source_elevation_deg_max>elev_min_deg):
-                        print "%9.3f - %9.3f <-> UTC: %s - %s   --> Elev: %7.3f / %7.3f deg   |   HA: %7.3f / %7.3f h    |     LST: %s-%s   "   % (trial_MJD_min,trial_MJD_max, trial_MJD_min_astropy, trial_MJD_max_astropy, source_elevation_deg_min,source_elevation_deg_max,hour_angle_h_min,hour_angle_h_max, t_observatory_sidereal_min, t_observatory_sidereal_max)
+                        print("%9.3f - %9.3f <-> UTC: %s - %s   --> Elev: %7.3f / %7.3f deg   |   HA: %7.3f / %7.3f h    |     LST: [%02dh %02dm %06.3fs] - [%02dh %02dm %06.3fs]"   % (trial_MJD_min,trial_MJD_max, trial_MJD_min_astropy, trial_MJD_max_astropy, source_elevation_deg_min,source_elevation_deg_max,hour_angle_h_min,hour_angle_h_max, LST_h_min, LST_m_min, LST_s_min, LST_h_max, LST_m_max, LST_s_max) )
+
+
+
                 
-        
         exit()
 
                 
